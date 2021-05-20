@@ -1,3 +1,10 @@
+#ReportOfTheMonth is an R script I use to parse Nielsen Data to deliver a rundown of programming that aired on the station.
+#The report measures # of Telecasts, Viewers, Rating, Month to Month Viewership Change/Rating Change/% Change, Year over Year Viewer Change/Rating Change/% Change,
+  #Daypart Rank in Viewership, Daypart Rank in Month over Month Change, Daypart Rank in Year over Year Change, the # Station and Program in the Timeslot, and
+  #how far away the station was from being #1 if they were not #1.
+#This R script took an an input file, "THEGRID", which is a cleaned, transformed and structured dataset containing all the metrics needed for the final output.
+#The Final Output is an Excel Workbook that utilized VBA macros for further visualization enhancements.
+
 library(readxl)
 library(openxlsx)
 library(readr)
