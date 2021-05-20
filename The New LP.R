@@ -1,9 +1,19 @@
+#The New LP is an R project that I single handedly built to take raw Nielsen data from our Snowflake database and transform it into a cleaned, structured file
+  #know as THEGRID. THEGRID is a file that measures many metrics from the Nielsen Data. The R script's main job is to merge the right programs with the proper
+  #Time Period Data for trending purposes, and then rank the program's market performance across 20 different ranking metrics. It also calculates dayparts by
+  #Time Zone and also whether or not the station is a Scripps Station.
+
+#The Final Output is a 4 tab excel file which contains a massive tab known as THEGRID, which contains all PPM and Set Meter market programming performance.
+#The Final Output's other 3 tabs highlight 10 success stories for each geography in the report for News, Prime, and Strip Programming.
+
 library(readxl)
 library(openxlsx)
 library(readr)
 library(dplyr)
 library(tidyr)
 library(lubridate)
+
+#These Variables are Manually Changed Based on Desired Months and Years to trend against.
 
 mo1 <- "JULY"
 mo2 <- "JUNE"
@@ -13,6 +23,9 @@ yr1 <- 2020
 yr2 <- 2020
 yr3 <- 2019
 
+#Program.csv is the raw data export from the Snowflake server containing raw Nielsen data scraped from the Nielsen API.
+#The Cleaning Process Begins Below.
+
 program_data <- read_csv("Program.csv", col_names = TRUE)
 
 colnames(program_data)[9] <- "IMPRESSIONS"
@@ -20,10 +33,13 @@ colnames(program_data)[10] <- "RATING"
 colnames(program_data)[11] <- "SHARE"
 colnames(program_data)[19] <- "TELECASTS"
 
+#These frames are databases of the Scripps Markets and their timezones.
 geog_frame <- read_csv("GEOFRAME.csv", col_names = TRUE)
 etzdp_frame <- read_csv("ETZDP.csv", col_names = TRUE)
 ctzdp_frame <- read_csv("CTZDP.csv", col_names = TRUE)
 rank_frame <- read_csv("RANKS.csv", col_names = TRUE)
+
+#Assign the proper time zones for local news start and end times.
 
 program_data2 <- program_data %>%
   full_join(geog_frame[,2:3], by = c("STATION"))
@@ -36,6 +52,8 @@ program_data_c <- program_data2 %>%
   filter(TIMEZONE == "CST" | TIMEZONE == "MST") %>%
   inner_join(ctzdp_frame, by = c("START_TIME_HH", "START_TIME_HFHR"))
 
+#Determine if programming is Local News, Prime, or Run of Mill Strip programming
+
 program_data3 <- rbind(program_data_e, program_data_c)
 
 news_prime <- which(program_data3$DAYPART == 8 & program_data3$GENRE == "LN - LOCAL NEWS")
@@ -47,6 +65,8 @@ program_prime <- program_data3 %>%
 program_runofmill <- program_data3 %>%
   filter(DAYPART != 8 | GENRE == "LN - LOCAL NEWS")
 
+#Determine the Day of Week the program airs, or if it is a Monday-Friday strip program
+
 program_runofmill$DAY_OF_WEEK <- "M-F"
 
 program_weekin <- rbind(program_prime, program_runofmill)
@@ -57,6 +77,8 @@ program_weekin <- program_weekin %>%
   summarize(ct = n())
 
 program_weekin <- program_weekin[, c(1:6)]
+
+#Since data is broken out day by day, this process groups each individual airing and calculates average rating, share, and viewers
 
 program_data33 <- program_data3[, -20]
 
@@ -73,11 +95,13 @@ ccc <- c(-18, -19, -20)
 
 program_data33 <- program_data33[, ccc]
 
+#Determine the network affiliaton of the station
+
 program_weekin3 <- program_data33 %>%
   left_join(program_weekin, by = c("GEOGRAPHY", "PROGRAM_NAME", "DEMO", "START_TIME_HH",
                                     "VA_NETWORK_AFFILIATION"))
   
-
+#This process filters out sport events and other airings that only aired once or twice.
 program_data3 <- program_weekin3
 program_data4 <- program_data3 %>%
   filter(TELECAST > 2 & DAYPART != 8 & GENRE != "SE - SPORTS EVENT")
@@ -89,6 +113,8 @@ program_data6 <- program_data3 %>%
   filter(TELECAST > 1 & GENRE == "SE - SPORTS EVENT")
 
 program_data3 <- rbind(program_data4, program_data5, program_data6)
+
+#Split the program data into 3 frames by time period(month). 
 
 mprog_frame_1 <- program_data3 %>%
   filter(VA_NIELSEN_MONTH_NAME == mo1 & VA_NIELSEN_YEAR_NUMBER == yr1)
@@ -104,6 +130,7 @@ prog_keep <- c(1, 2, 3, 4, 19, 20, 21)
 mprog_frame_2 <- mprog_frame_2[, prog_keep]
 mprog_frame_3 <- mprog_frame_3[, prog_keep]
 
+#Join program's past airings from Time Periods 2 and 3 for trending purposes.
 
 join_frame2 <- mprog_frame_1 %>%
   left_join(mprog_frame_2, 
@@ -128,6 +155,8 @@ colnames(join_frame3)[21] <- "SHR_R1"
 colnames(join_frame3)[23] <- "IMP_R2"
 colnames(join_frame3)[24] <- "RTG_R2"
 colnames(join_frame3)[25] <- "SHR_R2"
+
+#Calculate Impression, Rating, and Percentage Change from Time Period 1 to 2 and Time Period 1 to 3.
 
 join_frame4 <- join_frame3 %>% 
   mutate("R1R2_IMP" = IMP_R1 - IMP_R2) %>%
@@ -156,6 +185,7 @@ replace_inf <- function(x) {
 }
 
 #Add 20 blank columns for rank columns
+#20 different ranking metrics rank by genre, daypart, timeslot, day split by viewership rank, month over month change rank % and raw, year over year change rank % and raw
 
 x <- ncol(join_frame4) + 1
 y <- ncol(join_frame4) + 20
@@ -175,6 +205,8 @@ join_frame4 <- as.data.frame(cbind(r_frame, join_frame4))
 #---------------
 #VECTOR CREATION
 #----------------
+
+#create vectors to iterate through in the looping process.
 
 geo_vector <- join_frame4 %>%
   dplyr::group_by(GEOGRAPHY) %>%
@@ -687,6 +719,8 @@ colnames(test_frame)[1] <- "r_vector"
 #NEWS HIERARCHY
 #--------------
 
+#This is a hierarchy of success stories determined by local sales manager and marketing director input.
+
 corr_desc <- function(x) {
   
   if (x == 20) { return ("VIEWERSHIP") }
@@ -1107,6 +1141,12 @@ colnames(master_srame) <- c("GEO", "PROGRAM", "DEMO", "TYPE", "METRIC", "VALUE",
 #------------
 #EXCEL EXPORT
 #------------
+
+#Final Export Contains 4 tabs
+#THEGRID is the structured all purpose file that has all needed data.
+#NEWS 10 are the 10 biggest local news success stories of the report for each market.
+#PRIME 10 are the 10 biggest prime programming success stories of the report for each market.
+#STRIP 10 are the 10 biggest strip programming success stories of the report for each market.
 
 wb <- createWorkbook()
 addWorksheet(wb, "THE GRID")
