@@ -1,3 +1,7 @@
+#This file would take raw data dumps from Nielsen's API and create a weekly "Prime Scorecard" for all Scripps geographies to measure prime programming performance.
+#The final output would be an R Markdown HTML file that would be uploaded to a website for viewing by internal executives.
+#This code goes through the entire process of taking raw data and cleaning, structuring, analyzing and presenting all in one script.
+
 library(readxl)
 library(openxlsx)
 library(readr)
