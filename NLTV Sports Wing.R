@@ -1,3 +1,8 @@
+#This file would take raw data dumps from Nielsen's API and create a weekly "Sports Scorecard" for all Scripps geographies to measure sports programming performance.
+#The final output would be an R Markdown HTML file that would be uploaded to a website for viewing by internal executives.
+#This code goes through the entire process of taking raw data and cleaning, structuring, analyzing and presenting all in one script.
+#This code referred to local databases containing join tables of local teams and past season schedules to ensure apples to apples trending figures.
+
 library(readxl)
 library(openxlsx)
 library(readr)
