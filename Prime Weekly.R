@@ -1,3 +1,7 @@
+#This file generated Weekly Prime Scorecards to track immediate performance of prime programming across all geographies.
+#This is separate from the NLTV Prime Wing file, as this file ingested overnight rating data, instead of final rating data from NLTV, which has a different structure.
+#The final output is an R Markdown HTML document uploaded to an FTP to share with internal executives and managers.
+
 library(readxl)
 library(openxlsx)
 library(readr)
